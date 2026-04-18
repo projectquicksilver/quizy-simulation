@@ -1,0 +1,488 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{overflow:hidden}
+.root{
+  font-family:'Nunito',sans-serif;
+  background:#120730;
+  width:100%;height:620px;
+  position:relative;overflow:hidden;
+}
+
+/* stars */
+.stars{position:absolute;inset:0;pointer-events:none;z-index:0}
+.star{position:absolute;border-radius:50%;background:#fff;animation:tw var(--d) ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.15}to{opacity:.9}}
+
+/* ground platform */
+.ground{
+  position:absolute;bottom:0;left:0;right:0;height:70px;
+  background:linear-gradient(180deg,#1e0a4a 0%,#2d1463 100%);
+  border-top:2px solid rgba(0,229,255,0.3);
+  z-index:5;
+}
+.ground-glow{
+  position:absolute;top:-20px;left:0;right:0;height:20px;
+  background:linear-gradient(transparent,rgba(0,229,255,0.08));
+}
+
+/* score / lives bar */
+.hud{
+  position:absolute;top:0;left:0;right:0;z-index:20;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px 8px;
+}
+.hud-score{
+  font-family:'Fredoka One',cursive;font-size:20px;
+  color:#ffe600;text-shadow:0 0 10px rgba(255,230,0,.6);
+}
+.hud-lives{font-size:18px;letter-spacing:2px}
+.hud-combo{
+  font-family:'Fredoka One',cursive;font-size:14px;color:#ff4fd8;
+  text-shadow:0 0 8px rgba(255,79,216,.6);
+  min-width:60px;text-align:right;
+}
+
+/* question bubble */
+.q-bubble{
+  position:absolute;top:52px;left:50%;transform:translateX(-50%);
+  z-index:20;width:92%;max-width:420px;
+  background:linear-gradient(135deg,rgba(45,20,99,.95),rgba(18,7,48,.97));
+  border:1.5px solid rgba(0,229,255,.35);
+  border-radius:20px;padding:14px 18px;
+  text-align:center;
+  box-shadow:0 4px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07);
+}
+.q-cat{
+  display:inline-block;
+  background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.3);
+  border-radius:10px;padding:2px 10px;
+  font-size:9px;font-weight:800;color:#00e5ff;letter-spacing:1.5px;margin-bottom:7px;
+}
+.q-text{font-size:15px;font-weight:800;color:#f0e6ff;line-height:1.4}
+
+/* timer bar */
+.timer-bar-wrap{
+  position:absolute;top:0;left:0;right:0;height:4px;z-index:30;
+  background:rgba(255,255,255,.06);
+}
+.timer-bar{
+  height:100%;border-radius:0 2px 2px 0;
+  background:linear-gradient(90deg,#00e5ff,#ff4fd8);
+  box-shadow:0 0 8px rgba(0,229,255,.5);
+  transition:width .9s linear, background .5s;
+}
+
+/* DISH items */
+.dish{
+  position:absolute;z-index:15;
+  cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;
+  animation:fall var(--spd) linear forwards;
+  transform-origin:center;
+  pointer-events:auto;
+  user-select:none;
+}
+@keyframes fall{
+  0%{transform:translateY(0) rotate(var(--rot0))}
+  100%{transform:translateY(var(--dist)) rotate(var(--rot1))}
+}
+.dish-bubble{
+  width:var(--sz);height:var(--sz);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--fsz);
+  background:radial-gradient(circle at 35% 35%,var(--c1),var(--c2));
+  border:2.5px solid var(--cbdr);
+  box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 12px var(--cglow);
+  transition:transform .1s;
+  position:relative;overflow:hidden;
+}
+.dish-bubble::after{
+  content:'';position:absolute;top:10%;left:15%;
+  width:30%;height:20%;border-radius:50%;
+  background:rgba(255,255,255,.2);
+  transform:rotate(-30deg);
+}
+.dish-name{
+  font-size:10px;font-weight:800;color:#f0e6ff;
+  background:rgba(18,7,48,.85);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;padding:2px 7px;margin-top:5px;
+  white-space:nowrap;max-width:110px;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;
+}
+
+/* correct dish highlight */
+.dish.is-correct .dish-bubble{
+  box-shadow:0 0 0 3px #ffe600, 0 0 20px rgba(255,230,0,.5);
+  animation:correctGlow 0.8s ease infinite alternate;
+}
+@keyframes correctGlow{
+  from{box-shadow:0 0 0 2px #ffe600,0 0 12px rgba(255,230,0,.4)}
+  to{box-shadow:0 0 0 4px #ffe600,0 0 28px rgba(255,230,0,.8)}
+}
+
+/* click effects */
+.dish.clicked-correct{pointer-events:none;animation:correctPop .5s ease forwards!important}
+@keyframes correctPop{
+  0%{transform:scale(1)}
+  40%{transform:scale(1.35)}
+  100%{transform:scale(0);opacity:0}
+}
+.dish.clicked-wrong{pointer-events:none;animation:wrongShake .4s ease forwards!important}
+@keyframes wrongShake{
+  0%{transform:translateX(0)}25%{transform:translateX(-8px)}
+  75%{transform:translateX(8px)}100%{transform:translateX(0);opacity:.3}
+}
+
+/* splat on ground */
+.splat{
+  position:absolute;bottom:62px;font-size:22px;
+  animation:splatAnim .6s ease forwards;
+  pointer-events:none;z-index:6;
+}
+@keyframes splatAnim{
+  0%{transform:scale(0) rotate(-20deg);opacity:1}
+  60%{transform:scale(1.3) rotate(10deg);opacity:1}
+  100%{transform:scale(1) rotate(5deg);opacity:.5}
+}
+
+/* particles */
+.particle{
+  position:absolute;border-radius:50%;pointer-events:none;z-index:40;
+  animation:pFly var(--pd) ease forwards;
+}
+@keyframes pFly{
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)}
+}
+
+/* big feedback */
+.big-feedback{
+  position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);
+  z-index:50;pointer-events:none;
+  font-family:'Fredoka One',cursive;font-size:52px;
+  opacity:0;text-shadow:0 0 20px currentColor;
+}
+.big-feedback.pop{animation:bigPop 1.2s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes bigPop{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}
+  30%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}
+  70%{opacity:1;transform:translate(-50%,-65%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-80%) scale(.85)}
+}
+
+/* xp pop */
+.xp-float{
+  position:absolute;z-index:45;pointer-events:none;
+  font-family:'Fredoka One',cursive;font-size:20px;color:#ffe600;
+  text-shadow:0 0 8px rgba(255,230,0,.8);
+  opacity:0;
+}
+.xp-float.go{animation:xpUp 1.1s ease forwards}
+@keyframes xpUp{
+  0%{opacity:0;transform:translateY(0)}
+  20%{opacity:1}
+  100%{opacity:0;transform:translateY(-70px)}
+}
+
+/* next-question overlay */
+.next-overlay{
+  position:absolute;inset:0;z-index:60;
+  background:rgba(18,7,48,.88);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.next-overlay.show{opacity:1;pointer-events:auto}
+.result-emoji{font-size:64px;animation:resultBounce 0.6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes resultBounce{from{transform:scale(0)}to{transform:scale(1)}}
+.result-title{
+  font-family:'Fredoka One',cursive;font-size:28px;color:#ffe600;
+  text-shadow:0 0 12px rgba(255,230,0,.6);text-align:center;
+}
+.result-sub{font-size:14px;font-weight:800;color:rgba(240,230,255,.6);text-align:center}
+.next-btn{
+  margin-top:8px;padding:12px 36px;
+  font-family:'Fredoka One',cursive;font-size:18px;
+  background:linear-gradient(135deg,#4a1fa8,#7c3ff5);
+  color:#f0e6ff;border:2px solid rgba(0,229,255,.4);
+  border-radius:24px;cursor:pointer;
+  box-shadow:0 4px 20px rgba(74,31,168,.5);
+  transition:transform .15s,box-shadow .15s;
+}
+.next-btn:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(74,31,168,.7)}
+
+/* basket catcher hint */
+.catch-hint{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  font-size:10px;font-weight:800;color:rgba(240,230,255,.4);letter-spacing:1px;
+  z-index:10;white-space:nowrap;
+}
+</style>
+
+<h2 class="sr-only">Raining dishes quiz — tap the correct falling dish to answer the question</h2>
+
+<div class="root" id="root">
+  <div class="stars" id="stars"></div>
+  <div class="timer-bar-wrap"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
+
+  <div class="hud">
+    <div class="hud-score">⭐ <span id="scoreEl">0</span></div>
+    <div class="hud-lives" id="livesEl">❤️❤️❤️</div>
+    <div class="hud-combo" id="comboEl"></div>
+  </div>
+
+  <div class="q-bubble">
+    <div class="q-cat" id="catEl">🌏 WORLD FOOD</div>
+    <div class="q-text" id="qEl">Loading...</div>
+  </div>
+
+  <div class="ground"><div class="ground-glow"></div></div>
+  <div class="catch-hint">⬇ CLICK THE RIGHT DISH BEFORE IT HITS THE GROUND ⬇</div>
+
+  <div class="big-feedback" id="bigFeedback"></div>
+  <div class="next-overlay" id="nextOverlay">
+    <div class="result-emoji" id="resEmoji"></div>
+    <div class="result-title" id="resTitle"></div>
+    <div class="result-sub" id="resSub"></div>
+    <button class="next-btn" onclick="nextQuestion()">Next Question ⚡</button>
+  </div>
+</div>
+
+<script>
+const QUESTIONS=[
+  {cat:"🌏 WORLD FOOD",q:"What is Hong Kong's most iconic street food?",correct:"Egg Waffles",
+   decoys:["Peking Duck","Pad Thai","Ramen","Sushi","Biryani","Tacos","Falafel"],
+   emoji:{correct:"🧇",decoys:["🦆","🍜","🍜","🍱","🍛","🌮","🧆"]}},
+  {cat:"🍕 ITALIAN",q:"Which dish is originally from Naples, Italy?",correct:"Margherita Pizza",
+   decoys:["Spaghetti Bolognese","Croissant","Baklava","Paella","Fish & Chips","Gyoza","Pho"],
+   emoji:{correct:"🍕",decoys:["🍝","🥐","🍮","🥘","🐟","🥟","🍲"]}},
+  {cat:"🗾 JAPANESE",q:"What Japanese dish is rice topped with raw fish?",correct:"Sushi",
+   decoys:["Ramen","Tempura","Mochi","Gyoza","Udon","Yakitori","Onigiri"],
+   emoji:{correct:"🍣",decoys:["🍜","🍤","🍡","🥟","🍜","🍢","🍙"]}},
+  {cat:"🌮 MEXICAN",q:"Which dish wraps fillings in a corn or flour tortilla?",correct:"Tacos",
+   decoys:["Burrito","Enchilada","Empanada","Nachos","Tamale","Churros","Quesadilla"],
+   emoji:{correct:"🌮",decoys:["🌯","🫔","🥟","🧀","🫔","🍩","🫓"]}},
+];
+
+const DISH_THEMES=[
+  {c1:'#1a3a6e',c2:'#0a1a40',cbdr:'rgba(0,180,255,0.6)',cglow:'rgba(0,180,255,0.4)'},
+  {c1:'#6e1a3a',c2:'#400a1a',cbdr:'rgba(255,80,180,0.6)',cglow:'rgba(255,80,180,0.4)'},
+  {c1:'#3a1a6e',c2:'#1a0a40',cbdr:'rgba(150,80,255,0.6)',cglow:'rgba(150,80,255,0.4)'},
+  {c1:'#1a6e3a',c2:'#0a4020',cbdr:'rgba(57,255,100,0.6)',cglow:'rgba(57,255,100,0.4)'},
+  {c1:'#6e3a1a',c2:'#401a0a',cbdr:'rgba(255,150,50,0.6)',cglow:'rgba(255,150,50,0.4)'},
+  {c1:'#1a6e6e',c2:'#0a3a3a',cbdr:'rgba(0,229,255,0.6)',cglow:'rgba(0,229,255,0.4)'},
+  {c1:'#5a1a6e',c2:'#2a0a40',cbdr:'rgba(200,100,255,0.6)',cglow:'rgba(200,100,255,0.4)'},
+  {c1:'#6e5a1a',c2:'#402a0a',cbdr:'rgba(255,210,0,0.6)',cglow:'rgba(255,210,0,0.4)'},
+];
+
+const HEIGHTS=[480,500,520,540];
+let score=0,lives=3,combo=0,qIdx=0;
+let dishes=[],spawnInterval=null,timerInterval=null;
+let timeLeft=20,locked=false;
+let correctDishName='';
+
+// Build stars
+const starsEl=document.getElementById('stars');
+for(let i=0;i<55;i++){
+  const s=document.createElement('div');s.className='star';
+  const sz=Math.random()*2.5+0.5;
+  s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${(Math.random()*2+1.5).toFixed(1)}s;animation-delay:${(Math.random()*3).toFixed(1)}s`;
+  starsEl.appendChild(s);
+}
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+
+function startQuestion(){
+  locked=false;
+  document.getElementById('nextOverlay').classList.remove('show');
+  const data=QUESTIONS[qIdx%QUESTIONS.length];
+  document.getElementById('catEl').textContent=data.cat;
+  document.getElementById('qEl').textContent=data.q;
+  correctDishName=data.correct;
+
+  // clear old dishes
+  document.querySelectorAll('.dish,.splat').forEach(d=>d.remove());
+  dishes=[];
+
+  // build pool: correct + 3 random decoys
+  const decoyCount=3;
+  const pickedDecoys=shuffle(data.decoys.slice(0,data.decoys.length)).slice(0,decoyCount);
+  const decoyEmojis=pickedDecoys.map(d=>{const i=data.decoys.indexOf(d);return data.emoji.decoys[i]||'🍽️'});
+
+  const pool=[
+    {name:data.correct,emoji:data.emoji.correct,isCorrect:true},
+    ...pickedDecoys.map((n,i)=>({name:n,emoji:decoyEmojis[i],isCorrect:false}))
+  ];
+
+  // timer
+  timeLeft=20;
+  updateTimerBar();
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timeLeft=Math.max(0,timeLeft-0.05);
+    updateTimerBar();
+    if(timeLeft<=0){clearInterval(timerInterval);timesUp();}
+  },50);
+
+  // spawn
+  let spawnCount=0;
+  const maxSpawns=24;
+  clearInterval(spawnInterval);
+  spawnInterval=setInterval(()=>{
+    if(locked){clearInterval(spawnInterval);return}
+    if(spawnCount>=maxSpawns){clearInterval(spawnInterval);return}
+    const item=pool[Math.floor(Math.random()*pool.length)];
+    spawnDish(item.name,item.emoji,item.isCorrect);
+    spawnCount++;
+  },750);
+
+  // spawn one correct immediately so player isn't waiting
+  setTimeout(()=>{if(!locked)spawnDish(data.correct,data.emoji.correct,true)},400);
+}
+
+function updateTimerBar(){
+  const bar=document.getElementById('timerBar');
+  const pct=(timeLeft/20)*100;
+  bar.style.width=pct+'%';
+  bar.style.background=pct>50?'linear-gradient(90deg,#00e5ff,#a855f7)':
+    pct>25?'linear-gradient(90deg,#ffe600,#ff6b00)':'linear-gradient(90deg,#ff4fd8,#ff3b3b)';
+}
+
+function spawnDish(name,emoji,isCorrect){
+  if(locked)return;
+  const root=document.getElementById('root');
+  const rootW=root.offsetWidth||380;
+  const sz=62+Math.floor(Math.random()*18);
+  const fsz=Math.round(sz*0.42);
+  const xPos=Math.floor(Math.random()*(rootW-sz-20))+10;
+  const spd=(3.5+Math.random()*2.5).toFixed(1);
+  const rot0=(Math.random()*20-10).toFixed(1);
+  const rot1=(Math.random()*40-20).toFixed(1);
+  const groundDist=HEIGHTS[Math.floor(Math.random()*HEIGHTS.length)];
+  const theme=DISH_THEMES[Math.floor(Math.random()*DISH_THEMES.length)];
+
+  const d=document.createElement('div');
+  d.className='dish'+(isCorrect?' is-correct':'');
+  d.style.cssText=`left:${xPos}px;top:-90px;--spd:${spd}s;--rot0:${rot0}deg;--rot1:${rot1}deg;--dist:${groundDist}px;--sz:${sz}px;--fsz:${fsz}px;--c1:${theme.c1};--c2:${theme.c2};--cbdr:${theme.cbdr};--cglow:${theme.cglow}`;
+  d.innerHTML=`<div class="dish-bubble">${emoji}</div><div class="dish-name">${name}</div>`;
+  d.dataset.name=name;d.dataset.correct=isCorrect;
+
+  d.addEventListener('click',()=>handleClick(d,isCorrect,name));
+
+  // auto-remove when animation ends
+  d.addEventListener('animationend',()=>{
+    if(!d.classList.contains('clicked-correct')&&!d.classList.contains('clicked-wrong')){
+      if(isCorrect&&!locked){
+        // correct dish hit ground — lose life
+        createSplat(xPos+sz/2,emoji);
+        loseLife('💥');
+      }
+      d.remove();
+    }
+  },{once:true});
+
+  root.appendChild(d);
+  dishes.push(d);
+}
+
+function handleClick(el,isCorrect,name){
+  if(locked)return;
+  if(isCorrect){
+    locked=true;
+    clearInterval(spawnInterval);clearInterval(timerInterval);
+    el.classList.add('clicked-correct');
+    const rect=el.getBoundingClientRect();
+    const rootRect=document.getElementById('root').getBoundingClientRect();
+    burst(rect.left-rootRect.left+rect.width/2, rect.top-rootRect.top+rect.height/2);
+    const pts=150+Math.round(timeLeft*8)+(combo>0?combo*25:0);
+    score+=pts;
+    combo++;
+    updateHUD();
+    showBigFeedback(combo>2?'🔥 ON FIRE!':'⭐ CORRECT!','#ffe600');
+    floatXP('+'+pts, rect.left-rootRect.left+rect.width/2, rect.top-rootRect.top);
+    setTimeout(()=>showResult(true,name),700);
+  } else {
+    el.classList.add('clicked-wrong');
+    combo=0;
+    loseLife('💥');
+    showBigFeedback('✗ WRONG!','#ff4fd8');
+    setTimeout(()=>el.remove(),500);
+  }
+}
+
+function timesUp(){
+  if(locked)return;
+  locked=true;
+  clearInterval(spawnInterval);
+  combo=0;
+  loseLife('⏱️');
+  showResult(false,'');
+}
+
+function loseLife(hint){
+  lives=Math.max(0,lives-1);
+  const hearts=['❤️❤️❤️','❤️❤️🖤','❤️🖤🖤','🖤🖤🖤'];
+  document.getElementById('livesEl').textContent=hearts[3-lives];
+}
+
+function updateHUD(){
+  document.getElementById('scoreEl').textContent=score;
+  const c=document.getElementById('comboEl');
+  c.textContent=combo>1?'🔥x'+combo:'';
+}
+
+function showResult(correct,name){
+  document.querySelectorAll('.dish').forEach(d=>d.remove());
+  const ov=document.getElementById('nextOverlay');
+  document.getElementById('resEmoji').textContent=correct?'🎉':'💀';
+  document.getElementById('resTitle').textContent=correct?'Nailed it!':'Times up!';
+  document.getElementById('resSub').textContent=correct?`"${name}" was correct! Score: ${score}`:`The answer was "${correctDishName}"`;
+  ov.classList.add('show');
+}
+
+function nextQuestion(){
+  qIdx++;
+  startQuestion();
+}
+
+function showBigFeedback(txt,color){
+  const f=document.getElementById('bigFeedback');
+  f.textContent=txt;f.style.color=color;
+  f.classList.remove('pop');void f.offsetWidth;f.classList.add('pop');
+  setTimeout(()=>f.classList.remove('pop'),1300);
+}
+
+function floatXP(txt,x,y){
+  const el=document.createElement('div');
+  el.className='xp-float';
+  el.textContent=txt;
+  el.style.cssText=`left:${x}px;top:${y}px`;
+  document.getElementById('root').appendChild(el);
+  void el.offsetWidth;el.classList.add('go');
+  setTimeout(()=>el.remove(),1200);
+}
+
+function createSplat(x,emoji){
+  const s=document.createElement('div');s.className='splat';
+  s.style.left=(x-15)+'px';s.textContent=emoji;
+  document.getElementById('root').appendChild(s);
+  setTimeout(()=>s.remove(),2500);
+}
+
+function burst(cx,cy){
+  const colors=['#00e5ff','#ff4fd8','#ffe600','#39ff14','#ff6b00','#a855f7'];
+  for(let i=0;i<20;i++){
+    const p=document.createElement('div');p.className='particle';
+    const ang=Math.random()*360,dist=50+Math.random()*80;
+    const px=Math.cos(ang*Math.PI/180)*dist,py=Math.sin(ang*Math.PI/180)*dist;
+    const sz=4+Math.random()*6;
+    p.style.cssText=`left:${cx}px;top:${cy}px;width:${sz}px;height:${sz}px;background:${colors[i%6]};--px:${px}px;--py:${py}px;--pd:${(.4+Math.random()*.4).toFixed(2)}s;box-shadow:0 0 6px ${colors[i%6]}`;
+    document.getElementById('root').appendChild(p);
+    setTimeout(()=>p.remove(),900);
+  }
+}
+
+startQuestion();
+</script>
